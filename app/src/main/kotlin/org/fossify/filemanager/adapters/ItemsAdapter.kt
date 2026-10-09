@@ -91,6 +91,7 @@ import org.fossify.commons.views.MyRecyclerView
 import org.fossify.filemanager.R
 import org.fossify.filemanager.activities.SimpleActivity
 import org.fossify.filemanager.activities.SplashActivity
+import org.fossify.filemanager.activities.VideoPlayerActivity
 import org.fossify.filemanager.databinding.ItemDirGridBinding
 import org.fossify.filemanager.databinding.ItemEmptyBinding
 import org.fossify.filemanager.databinding.ItemFileDirListBinding
@@ -119,6 +120,21 @@ import java.io.File
 import java.util.LinkedList
 import java.util.Locale
 
+private fun openVideoInternally(activity: SimpleActivity, path: String): Boolean {
+    val uri = when {
+        activity.isPathOnOTG(path) -> activity.getDocumentFile(path)?.uri
+        activity.isRestrictedSAFOnlyRoot(path) -> activity.getAndroidSAFUri(path)
+        else -> Uri.fromFile(File(path))
+    } ?: return false
+
+    Intent(activity, VideoPlayerActivity::class.java).apply {
+        data = uri
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        activity.startActivity(this)
+    }
+    return true
+}
+
 class ItemsAdapter(
     activity: SimpleActivity,
     var listItems: MutableList<ListItem>,
@@ -128,7 +144,16 @@ class ItemsAdapter(
     private val swipeRefreshLayout: SwipeRefreshLayout?,
     canHaveIndividualViewType: Boolean = true,
     itemClick: (Any) -> Unit,
-) : MyRecyclerViewAdapter(activity, recyclerView, itemClick),
+) : MyRecyclerViewAdapter(activity, recyclerView, { item ->
+    val file = item as? FileDirItem
+    if (file != null && !file.isDirectory && file.path.getMimeType().startsWith("video/")) {
+        if (!openVideoInternally(activity, file.path)) {
+            itemClick(item)
+        }
+    } else {
+        itemClick(item)
+    }
+}),
     RecyclerViewFastScroller.OnPopupTextUpdate {
 
     private lateinit var fileDrawable: Drawable
@@ -482,7 +507,7 @@ class ItemsAdapter(
     }
 
     private fun openWith() {
-        activity.tryOpenPathIntent(getFirstSelectedItemPath(), true)
+        openSelectedFile()
     }
 
     private fun openAs() {
@@ -496,8 +521,22 @@ class ItemsAdapter(
         )
 
         RadioGroupDialog(activity, items) {
-            activity.tryOpenPathIntent(getFirstSelectedItemPath(), false, it as Int)
+            val openAsType = it as Int
+            if (openAsType == OPEN_AS_VIDEO) {
+                openSelectedFile()
+            } else {
+                activity.tryOpenPathIntent(getFirstSelectedItemPath(), false, openAsType)
+            }
         }
+    }
+
+    private fun openSelectedFile() {
+        val path = getFirstSelectedItemPath()
+        if (path.getMimeType().startsWith("video/") && openVideoInternally(activity, path)) {
+            return
+        }
+
+        activity.tryOpenPathIntent(path, true)
     }
 
     private fun tryMoveFiles() {
