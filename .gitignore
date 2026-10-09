@@ -1,0 +1,43 @@
+*.iml
+*.aab
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+keystore.jks
+keystore.properties
+fastlane/fastlane.json
+fastlane/report.xml
+.kotlin/
+# Environment & secrets
+.env
+.env.*
+*.key
+*.pem
+secrets.json
+config.local.*
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+.venv/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
