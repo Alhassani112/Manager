@@ -168,6 +168,7 @@ class ItemsAdapter(
     private var timeFormat = ""
 
     private val config = activity.config
+    private val simpleActivity: SimpleActivity = activity
     private val viewType = if (canHaveIndividualViewType) {
         config.getFolderViewType(
             path = listItems.firstOrNull { !it.isSectionTitle }?.mPath?.getParentPath().orEmpty()
@@ -532,7 +533,7 @@ class ItemsAdapter(
 
     private fun openSelectedFile() {
         val path = getFirstSelectedItemPath()
-        if (path.getMimeType().startsWith("video/") && openVideoInternally(activity, path)) {
+        if (path.getMimeType().startsWith("video/") && openVideoInternally(simpleActivity, path)) {
             return
         }
 
