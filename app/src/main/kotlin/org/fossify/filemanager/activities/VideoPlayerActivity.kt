@@ -196,7 +196,7 @@ class VideoPlayerActivity : SimpleActivity() {
 
     private fun loadPlayerSettings() {
         playbackSpeed = playerSettings.getFloat(KEY_PLAYBACK_SPEED, 1.0f)
-            .takeIf { it in playbackSpeeds } ?: 1.0f
+            .takeIf { speed -> playbackSpeeds.any { allowedSpeed -> allowedSpeed == speed } } ?: 1.0f
         resizeMode = playerSettings.getInt(
             KEY_RESIZE_MODE,
             AspectRatioFrameLayout.RESIZE_MODE_FIT
