@@ -74,13 +74,14 @@ class VideoPlayerActivity : SimpleActivity() {
         }
 
         override fun onScroll(
-            firstEvent: MotionEvent,
+            firstEvent: MotionEvent?,
             currentEvent: MotionEvent,
             distanceX: Float,
             distanceY: Float
         ): Boolean {
-            val totalX = currentEvent.x - firstEvent.x
-            val totalY = currentEvent.y - firstEvent.y
+            val startEvent = firstEvent ?: return true
+            val totalX = currentEvent.x - startEvent.x
+            val totalY = currentEvent.y - startEvent.y
             if (gestureMode == GestureMode.NONE) {
                 val touchSlop = ViewConfiguration.get(this@VideoPlayerActivity).scaledTouchSlop
                 if (maxOf(abs(totalX), abs(totalY)) < touchSlop) {
@@ -89,7 +90,7 @@ class VideoPlayerActivity : SimpleActivity() {
 
                 gestureMode = if (abs(totalX) > abs(totalY)) {
                     GestureMode.SEEK
-                } else if (firstEvent.x >= getPlayerWidth() / 2f) {
+                } else if (startEvent.x >= getPlayerWidth() / 2f) {
                     GestureMode.VOLUME
                 } else {
                     GestureMode.BRIGHTNESS
