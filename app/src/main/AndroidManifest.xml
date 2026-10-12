@@ -74,6 +74,7 @@
 
         <activity
             android:name=".activities.VideoPlayerActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="false" />
 
         <activity

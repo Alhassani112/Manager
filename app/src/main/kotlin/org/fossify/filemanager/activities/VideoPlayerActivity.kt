@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.content.res.Configuration
 import android.view.GestureDetector
 import android.view.Menu
 import android.view.MotionEvent
@@ -34,6 +35,9 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class VideoPlayerActivity : SimpleActivity() {
+    private const val KEY_POSITION = "player_position"
+    private const val KEY_PLAY_WHEN_READY = "player_playWhenReady"
+
     companion object {
         private const val PLAYER_SETTINGS = "video_player_settings"
         private const val KEY_PLAYBACK_SPEED = "playback_speed"
@@ -145,7 +149,7 @@ class VideoPlayerActivity : SimpleActivity() {
         super.onCreate(savedInstanceState)
         loadPlayerSettings()
         applyOrientation()
-        setContentView(R.layout.activity_video_player)
+        setContentView(R.layout(activity_video_player))
         hideSystemBars()
 
         playerView = findViewById(R.id.video_player_view)
@@ -174,7 +178,22 @@ class VideoPlayerActivity : SimpleActivity() {
             return
         }
 
-        initializePlayer(videoUri)
+        if (player == null) {
+            initializePlayer(videoUri)
+        }
+
+        if (savedInstanceState != null) {
+            val savedPosition = savedInstanceState.getLong(KEY_POSITION, C.TIME_UNSET)
+            if (savedPosition != C.TIME_UNSET) {
+                player?.seekTo(savedPosition)
+            }
+            val savedPlayWhenReady = savedInstanceState.getBoolean(KEY_PLAY_WHEN_READY, false)
+            if (savedPlayWhenReady) {
+                player?.play()
+            } else {
+                player?.pause()
+            }
+        }
     }
 
     private fun initializePlayer(videoUri: Uri) {
@@ -382,7 +401,7 @@ class VideoPlayerActivity : SimpleActivity() {
     override fun onStop() {
         systemBarsHandler.removeCallbacks(hideSystemBarsRunnable)
         showSystemBars()
-        releasePlayer()
+        player?.pause()
         super.onStop()
     }
 
@@ -562,5 +581,17 @@ class VideoPlayerActivity : SimpleActivity() {
         playerView?.player = null
         player?.release()
         player = null
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // No-op; player continues.
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val currentPos = player?.currentPosition ?: C.TIME_UNSET
+        outState.putLong(KEY_POSITION, currentPos)
+        outState.putBoolean(KEY_PLAY_WHEN_READY, player?.playWhenReady ?: false)
     }
 }
