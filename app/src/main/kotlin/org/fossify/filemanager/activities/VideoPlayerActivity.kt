@@ -166,9 +166,8 @@ class VideoPlayerActivity : SimpleActivity() {
         val contentResolver = contentResolver
         val docFile = DocumentFile.fromSingleUri(this, uri)
         val parentDoc = docFile?.parentFile
-        val parentFile: File? = if (parentDoc != null) parentDoc.file else null
         var baseName: String? = null
-        if (parentFile != null) {
+        if (parentDoc != null) {
             // Try to get display name via OpenableColumns.DISPLAY_NAME
             val displayName = contentResolver.query(
                 uri,
@@ -191,15 +190,14 @@ class VideoPlayerActivity : SimpleActivity() {
                 return emptyList()
             }
         }
-        if (baseName == null || parentFile == null || !parentFile.exists() || !parentFile.isDirectory) return emptyList()
+        if (baseName == null || parentDoc == null) return emptyList()
+        val children = parentDoc?.listFiles() ?: return emptyList()
         val configs = mutableListOf<SubtitleConfiguration>()
-        val files = parentFile.listFiles()
-        if (files == null) return emptyList()
-        for (file in files) {
-            if (!file.isFile) continue
-            val name = file.name
+        for (child in children) {
+            if (!child.isFile) continue
+            val name = child.name
             if (!name.startsWith(baseName)) continue
-            val extension = file.name.substringAfterLast('.')
+            val extension = name.substringAfterLast('.')
             if (!subtitleExtensions.contains(extension)) continue
             // Extract language from the part between baseName and extension
             val middle = name.substring(baseName.length)
@@ -214,7 +212,7 @@ class VideoPlayerActivity : SimpleActivity() {
                 "ass", "ssa" -> "text/x-ssa"
                 else -> "*/*"
             }
-            configs.add(SubtitleConfiguration.Builder(Uri.fromFile(file))
+            configs.add(SubtitleConfiguration.Builder(child.uri)
                     .setMimeType(mime)
                     .setLanguage(language)
                     .build())
@@ -389,11 +387,13 @@ class VideoPlayerActivity : SimpleActivity() {
         }
 
         // Set track selection parameters to prefer Arabic text tracks
-        val currentParams = player?.trackSelectionParameters
-        val newParams = currentParams?.buildUpon()
-                ?.setPreferredTextLanguage("ar")
-                ?.build()
-        player?.let { it.trackSelectionParameters = newParams }
+        player?.let {
+            val currentParams = it.trackSelectionParameters
+            val newParams = currentParams.buildUpon()
+                    .setPreferredTextLanguage("ar")
+                    .build()
+            it.trackSelectionParameters = newParams
+        }
 
         // Restore playback state if available
         if (savedInstanceState != null) {
