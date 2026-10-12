@@ -196,11 +196,11 @@ class VideoPlayerActivity : SimpleActivity() {
         for (child in children) {
             if (!child.isFile) continue
             val name = child.name
-            if (!name.startsWith(baseName)) continue
-            val extension = name.substringAfterLast('.')
+            if (name?.startsWith(baseName) != true) continue
+            val extension = name?.substringAfterLast('.') ?: ""
             if (!subtitleExtensions.contains(extension)) continue
             // Extract language from the part between baseName and extension
-            val middle = name.substring(baseName.length)
+            val middle = name?.substring(baseName.length) ?: ""
             // Remove leading dot or underscore if present
             val langPart = if (middle.startsWith(".") || middle.startsWith("_")) middle.substring(1) else middle
             // Remove extension from langPart
