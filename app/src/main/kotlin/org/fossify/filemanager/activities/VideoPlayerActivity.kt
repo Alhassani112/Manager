@@ -40,6 +40,7 @@ import android.widget.Toast
 import androidx.media3.common.MediaItem.SubtitleConfiguration
 import androidx.media3.common.TrackSelectionParameters
 import android.provider.OpenableColumns
+import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
 class VideoPlayerActivity : SimpleActivity() {
@@ -94,7 +95,7 @@ class VideoPlayerActivity : SimpleActivity() {
                     "ass", "ssa" -> "text/x-ssa"
                     else -> "*/*"
                 }
-                configs.add(SubtitleConfiguration.Builder(uriOf(exactFile))
+                configs.add(SubtitleConfiguration.Builder(Uri.fromFile(exactFile))
                         .setMimeType(mime)
                         .setLanguage(lang)
                         .build())
@@ -109,7 +110,7 @@ class VideoPlayerActivity : SimpleActivity() {
                         "ass", "ssa" -> "text/x-ssa"
                         else -> "*/*"
                     }
-                    configs.add(SubtitleConfiguration.Builder(uriOf(arFile))
+                    configs.add(SubtitleConfiguration.Builder(Uri.fromFile(arFile))
                             .setMimeType(mime)
                             .setLanguage(lang)
                             .build())
@@ -122,7 +123,7 @@ class VideoPlayerActivity : SimpleActivity() {
                         "ass", "ssa" -> "text/x-ssa"
                         else -> "*/*"
                     }
-                    configs.add(SubtitleConfiguration.Builder(uriOf(arFile2))
+                    configs.add(SubtitleConfiguration.Builder(Uri.fromFile(arFile2))
                             .setMimeType(mime)
                             .setLanguage(lang)
                             .build())
@@ -137,7 +138,7 @@ class VideoPlayerActivity : SimpleActivity() {
                         "ass", "ssa" -> "text/x-ssa"
                         else -> "*/*"
                     }
-                    configs.add(SubtitleConfiguration.Builder(uriOf(enFile))
+                    configs.add(SubtitleConfiguration.Builder(Uri.fromFile(enFile))
                             .setMimeType(mime)
                             .setLanguage(lang)
                             .build())
@@ -150,7 +151,7 @@ class VideoPlayerActivity : SimpleActivity() {
                         "ass", "ssa" -> "text/x-ssa"
                         else -> "*/*"
                     }
-                    configs.add(SubtitleConfiguration.Builder(uriOf(enFile2))
+                    configs.add(SubtitleConfiguration.Builder(Uri.fromFile(enFile2))
                             .setMimeType(mime)
                             .setLanguage(lang)
                             .build())
@@ -392,7 +393,7 @@ class VideoPlayerActivity : SimpleActivity() {
         val newParams = currentParams?.buildUpon()
                 ?.setPreferredTextLanguage("ar")
                 ?.build()
-        player?.trackSelectionParameters = newParams
+        player?.let { it.trackSelectionParameters = newParams }
 
         // Restore playback state if available
         if (savedInstanceState != null) {
