@@ -33,6 +33,14 @@ import org.fossify.filemanager.R
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import android.provider.DocumentsContract
+import android.webkit.MimeTypeMap
+import android.util.Log
+import android.widget.Toast
+import androidx.media3.common.MediaItem.SubtitleConfiguration
+import androidx.media3.common.TrackSelectionParameters
+import android.provider.OpenableColumns
+import java.io.File
 
 class VideoPlayerActivity : SimpleActivity() {
     companion object {
@@ -45,6 +53,187 @@ class VideoPlayerActivity : SimpleActivity() {
         private const val MENU_ORIENTATION = 3
         private const val KEY_POSITION = "player_position"
         private const val KEY_PLAY_WHEN_READY = "player_playWhenReady"
+    }
+
+    // Subtitle related constants
+    private val subtitleExtensions = listOf("srt", "ass", "ssa", "vtt", "sub")
+    private val arabicLanguages = listOf("ar", "ara")
+    private val englishLanguages = listOf("en", "eng")
+
+    // Helper functions
+    private fun getLanguageFromFileName(fileName: String): String? {
+        val lower = fileName.lowercase()
+        // Patterns: .ar. _ar .arabic. _arabic .en. _en .english. _english
+        if (lower.contains(".ar.") || lower.contains("_ar") || lower.contains(".arabic.") || lower.contains("_arabic")) {
+            return "ar"
+        }
+        if (lower.contains(".en.") || lower.contains("_en") || lower.contains(".english.") || lower.contains("_english")) {
+            return "en"
+        }
+        // If no language marker, return null (meaning unknown)
+        return null
+    }
+
+    private fun getSubtitleConfigsForFileUri(uri: Uri): List<SubtitleConfiguration> {
+        if (uri.scheme != "file") return emptyList()
+        val path = uri.path ?: return emptyList()
+        val file = File(path)
+        if (!file.exists()) return emptyList()
+        val parent = file.parentFile ?: return emptyList()
+        if (!parent.exists() || !parent.isDirectory) return emptyList()
+        val baseName = file.name.substringBeforeLast('.')
+        val configs = mutableListOf<SubtitleConfiguration>()
+        for (ext in subtitleExtensions) {
+            // exact match without language
+            val exactFile = File(parent, "$baseName.$ext")
+            if (exactFile.exists()) {
+                val lang = getLanguageFromFileName("$baseName.$ext") ?: "und"
+                val mime = when (ext) {
+                    "srt" -> "application/x-subrip"
+                    "vtt" -> "text/vtt"
+                    "ass", "ssa" -> "text/x-ssa"
+                    else -> "*/*"
+                }
+                configs.add(SubtitleConfiguration.Builder(uriOf(exactFile))
+                        .setMimeType(mime)
+                        .setLanguage(lang)
+                        .build())
+            }
+            // language patterns: .lang. and _lang.
+            for (lang in arabicLanguages) {
+                val arFile = File(parent, "$baseName.$lang.$ext")
+                if (arFile.exists()) {
+                    val mime = when (ext) {
+                        "srt" -> "application/x-subrip"
+                        "vtt" -> "text/vtt"
+                        "ass", "ssa" -> "text/x-ssa"
+                        else -> "*/*"
+                    }
+                    configs.add(SubtitleConfiguration.Builder(uriOf(arFile))
+                            .setMimeType(mime)
+                            .setLanguage(lang)
+                            .build())
+                }
+                val arFile2 = File(parent, "$baseName" + "_$lang.$ext")
+                if (arFile2.exists()) {
+                    val mime = when (ext) {
+                        "srt" -> "application/x-subrip"
+                        "vtt" -> "text/vtt"
+                        "ass", "ssa" -> "text/x-ssa"
+                        else -> "*/*"
+                    }
+                    configs.add(SubtitleConfiguration.Builder(uriOf(arFile2))
+                            .setMimeType(mime)
+                            .setLanguage(lang)
+                            .build())
+                }
+            }
+            for (lang in englishLanguages) {
+                val enFile = File(parent, "$baseName.$lang.$ext")
+                if (enFile.exists()) {
+                    val mime = when (ext) {
+                        "srt" -> "application/x-subrip"
+                        "vtt" -> "text/vtt"
+                        "ass", "ssa" -> "text/x-ssa"
+                        else -> "*/*"
+                    }
+                    configs.add(SubtitleConfiguration.Builder(uriOf(enFile))
+                            .setMimeType(mime)
+                            .setLanguage(lang)
+                            .build())
+                }
+                val enFile2 = File(parent, "$baseName" + "_$lang.$ext")
+                if (enFile2.exists()) {
+                    val mime = when (ext) {
+                        "srt" -> "application/x-subrip"
+                        "vtt" -> "text/vtt"
+                        "ass", "ssa" -> "text/x-ssa"
+                        else -> "*/*"
+                    }
+                    configs.add(SubtitleConfiguration.Builder(uriOf(enFile2))
+                            .setMimeType(mime)
+                            .setLanguage(lang)
+                            .build())
+                }
+            }
+        }
+        return configs
+    }
+
+    private fun getSubtitleConfigsForContentUri(uri: Uri): List<SubtitleConfiguration> {
+        if (uri.scheme != "content") return emptyList()
+        val contentResolver = contentResolver
+        val docFile = DocumentFile.fromSingleUri(this, uri)
+        val parentDoc = docFile?.parentFile
+        val parentFile: File? = if (parentDoc != null) parentDoc.file else null
+        var baseName: String? = null
+        if (parentFile != null) {
+            // Try to get display name via OpenableColumns.DISPLAY_NAME
+            val displayName = contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+            baseName = displayName?.substringBeforeLast('.')
+        } else {
+            // Fallback: use DocumentsContract.findDocumentPath
+            val path = DocumentsContract.findDocumentPath(contentResolver, uri)
+            if (path != null) {
+                // path is like "/document/...": we cannot easily get a File, so we give up.
+                Log.d("Subtitle", "DocumentsContract path obtained but cannot resolve to File: $path")
+                return emptyList()
+            } else {
+                return emptyList()
+            }
+        }
+        if (baseName == null || parentFile == null || !parentFile.exists() || !parentFile.isDirectory) return emptyList()
+        val configs = mutableListOf<SubtitleConfiguration>()
+        val files = parentFile.listFiles()
+        if (files == null) return emptyList()
+        for (file in files) {
+            if (!file.isFile) continue
+            val name = file.name
+            if (!name.startsWith(baseName)) continue
+            val extension = file.name.substringAfterLast('.')
+            if (!subtitleExtensions.contains(extension)) continue
+            // Extract language from the part between baseName and extension
+            val middle = name.substring(baseName.length)
+            // Remove leading dot or underscore if present
+            val langPart = if (middle.startsWith(".") || middle.startsWith("_")) middle.substring(1) else middle
+            // Remove extension from langPart
+            val langRaw = langPart.substringBeforeLast('.')
+            val language = getLanguageFromFileName(langRaw) ?: "und"
+            val mime = when (extension) {
+                "srt" -> "application/x-subrip"
+                "vtt" -> "text/vtt"
+                "ass", "ssa" -> "text/x-ssa"
+                else -> "*/*"
+            }
+            configs.add(SubtitleConfiguration.Builder(Uri.fromFile(file))
+                    .setMimeType(mime)
+                    .setLanguage(language)
+                    .build())
+        }
+        return configs
+    }
+
+    private fun sortSubtitleConfigs(configs: List<SubtitleConfiguration>): List<SubtitleConfiguration> {
+        return configs.sortedWith(compareBy<SubtitleConfiguration> {
+            val lang = it.language ?: ""
+            when {
+                lang.startsWith("ar") -> 0
+                lang.startsWith("en") -> 1
+                else -> 2
+            }
+        })
+    }
+
+    private fun showArabicSubtitleToast() {
+        Toast.makeText(this, "تم تحميل الترجمة العربية", Toast.LENGTH_SHORT).show()
     }
 
     private enum class GestureMode {
@@ -177,10 +366,35 @@ class VideoPlayerActivity : SimpleActivity() {
             return
         }
 
+        // Detect subtitles
+        val subtitleConfigs = getSubtitleConfigsForFileUri(videoUri) ?: getSubtitleConfigsForContentUri(videoUri) ?: emptyList()
+        val sortedConfigs = sortSubtitleConfigs(subtitleConfigs)
+        if (sortedConfigs.any { it.language?.startsWith("ar") == true }) {
+            showArabicSubtitleToast()
+        }
+
         if (player == null) {
             initializePlayer(videoUri)
         }
 
+        // Apply subtitle configurations if any
+        if (sortedConfigs.isNotEmpty()) {
+            val builder = MediaItem.Builder().setUri(videoUri)
+            builder.setSubtitleConfigurations(sortedConfigs)
+            val mediaItem = builder.build()
+            player?.setMediaItem(mediaItem)
+        } else {
+            player?.setMediaItem(MediaItem.fromUri(videoUri))
+        }
+
+        // Set track selection parameters to prefer Arabic text tracks
+        val currentParams = player?.trackSelectionParameters
+        val newParams = currentParams?.buildUpon()
+                ?.setPreferredTextLanguage("ar")
+                ?.build()
+        player?.trackSelectionParameters = newParams
+
+        // Restore playback state if available
         if (savedInstanceState != null) {
             val savedPosition = savedInstanceState.getLong(KEY_POSITION, C.TIME_UNSET)
             if (savedPosition != C.TIME_UNSET) {
@@ -206,10 +420,6 @@ class VideoPlayerActivity : SimpleActivity() {
                 toast(R.string.unknown_error_occurred)
             }
         })
-
-        exoPlayer.setMediaItem(MediaItem.fromUri(videoUri))
-        exoPlayer.prepare()
-        exoPlayer.play()
     }
 
     private fun loadPlayerSettings() {
@@ -429,7 +639,7 @@ class VideoPlayerActivity : SimpleActivity() {
                     or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                     or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                )
+            )
         }
     }
 
@@ -560,7 +770,6 @@ class VideoPlayerActivity : SimpleActivity() {
     }
 
     private fun getPlayerWidth() = playerView?.width?.coerceAtLeast(1) ?: 1
-
     private fun getPlayerHeight() = playerView?.height?.coerceAtLeast(1) ?: 1
 
     @OptIn(UnstableApi::class)
