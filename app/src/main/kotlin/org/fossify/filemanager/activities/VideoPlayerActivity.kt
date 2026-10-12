@@ -35,9 +35,6 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class VideoPlayerActivity : SimpleActivity() {
-    private const val KEY_POSITION = "player_position"
-    private const val KEY_PLAY_WHEN_READY = "player_playWhenReady"
-
     companion object {
         private const val PLAYER_SETTINGS = "video_player_settings"
         private const val KEY_PLAYBACK_SPEED = "playback_speed"
@@ -46,6 +43,8 @@ class VideoPlayerActivity : SimpleActivity() {
         private const val MENU_PLAYBACK_SPEED = 1
         private const val MENU_RESIZE_MODE = 2
         private const val MENU_ORIENTATION = 3
+        private const val KEY_POSITION = "player_position"
+        private const val KEY_PLAY_WHEN_READY = "player_playWhenReady"
     }
 
     private enum class GestureMode {
@@ -149,7 +148,7 @@ class VideoPlayerActivity : SimpleActivity() {
         super.onCreate(savedInstanceState)
         loadPlayerSettings()
         applyOrientation()
-        setContentView(R.layout(activity_video_player))
+        setContentView(R.layout.activity_video_player)
         hideSystemBars()
 
         playerView = findViewById(R.id.video_player_view)
